@@ -1,4 +1,4 @@
 [[redirects]]
   from = "/web_api/*"
   to = "http://74.235.242.53:3002/:splat"
-	headers = { Access-Control-Allow-Origin = "*" }
+	status = 200
