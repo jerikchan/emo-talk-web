@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/web_api/:match*",
+      "destination": "http://74.235.242.53:3002/:match*"
+    }
+  ]
+}
