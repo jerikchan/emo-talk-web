@@ -1,9 +1,9 @@
 {
-  "name": "chatgpt-web",
+  "name": "emo-talk-web",
   "version": "2.10.9",
   "private": false,
   "description": "ChatGPT Web",
-  "author": "ChenZhaoYu <chenzhaoyu1994@gmail.com>",
+  "author": "jerikchan <jerikchan@gmail.com>",
   "keywords": [
     "chatgpt-web",
     "chatgpt",
@@ -12,6 +12,7 @@
   ],
   "scripts": {
     "dev": "vite",
+    "staging": "vite --mode staging",
     "build": "run-p type-check build-only",
     "preview": "vite preview",
     "build-only": "vite build",

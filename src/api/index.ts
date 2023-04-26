@@ -64,3 +64,13 @@ export function fetchVerify<T>(token: string) {
     data: { token },
   })
 }
+
+export function fetchDetect<T>(source: File) {
+  return post<T>({
+    url: '/detect-text',
+    headers: {
+      'Content-Type': 'multipart/form-data;charset=UTF-8',
+    },
+    data: { source },
+  })
+}

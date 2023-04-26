@@ -3,18 +3,22 @@ import { computed, ref } from 'vue'
 import { NDropdown } from 'naive-ui'
 import AvatarComponent from './Avatar.vue'
 import TextComponent from './Text.vue'
+import ImageComponent from './Image.vue'
 import { SvgIcon } from '@/components/common'
 import { copyText } from '@/utils/format'
 import { useIconRender } from '@/hooks/useIconRender'
 import { t } from '@/locales'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 
+type FileType = 'text' | 'image'
 interface Props {
   dateTime?: string
   text?: string
+  filePreview?: string
   inversion?: boolean
   error?: boolean
   loading?: boolean
+  type?: FileType
 }
 
 interface Emit {
@@ -22,7 +26,9 @@ interface Emit {
   (ev: 'delete'): void
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  type: 'text',
+})
 
 const emit = defineEmits<Emit>()
 
@@ -101,12 +107,21 @@ function handleRegenerate() {
         :class="[inversion ? 'flex-row-reverse' : 'flex-row']"
       >
         <TextComponent
+          v-if="!type || type === 'text'"
           ref="textRef"
           :inversion="inversion"
           :error="error"
           :text="text"
           :loading="loading"
           :as-raw-text="asRawText"
+        />
+        <ImageComponent
+          v-else-if="type === 'image'"
+          :inversion="inversion"
+          :file-preview="filePreview"
+          :error="error"
+          :text="text"
+          :loading="loading"
         />
         <div class="flex flex-col">
           <button

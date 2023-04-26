@@ -3,7 +3,8 @@ import type { Ref } from 'vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { NAutoComplete, NButton, NInput, useDialog, useMessage } from 'naive-ui'
+import { NAutoComplete, NButton, NInput, NUpload, NUploadTrigger, useDialog, useMessage } from 'naive-ui'
+import type { UploadFileInfo } from 'naive-ui'
 import html2canvas from 'html2canvas'
 import { Message } from './components'
 import { useScroll } from './hooks/useScroll'
@@ -14,8 +15,10 @@ import HeaderComponent from './components/Header/index.vue'
 import { HoverButton, SvgIcon } from '@/components/common'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { useChatStore, usePromptStore } from '@/store'
-import { fetchChatAPIProcess } from '@/api'
+import { fetchChatAPIProcess, fetchDetect } from '@/api'
 import { t } from '@/locales'
+import { fileToBase64 } from '@/utils/transform'
+import { parseWordsInfo } from '@/utils/chat'
 
 let controller = new AbortController()
 
@@ -40,6 +43,7 @@ const dataSources = computed(() => chatStore.getChatByUuid(+uuid))
 const conversationList = computed(() => dataSources.value.filter(item => (!item.inversion && !!item.conversationOptions)))
 
 const prompt = ref<string>('')
+const uploadRef = ref<Ref | null>(null)
 const loading = ref<boolean>(false)
 const inputRef = ref<Ref | null>(null)
 
@@ -59,8 +63,71 @@ function handleSubmit() {
   onConversation()
 }
 
+function handleUpload(options: { fileList: UploadFileInfo[] }) {
+  onSendImage(options.fileList)
+}
+
+async function onSendImage(fileList: UploadFileInfo[]) {
+  const fileInfo = fileList[0]
+
+  if (loading.value)
+    return
+
+  if (!fileInfo || !fileInfo.file)
+    return
+
+  controller = new AbortController()
+
+  const fileDataURI = await fileToBase64(fileInfo.file)
+  loading.value = true
+  uploadRef.value.clear()
+  let message = ''
+
+  try {
+    addChat(
+      +uuid,
+      {
+        dateTime: new Date().toLocaleString(),
+        text: '[image]',
+        filePreview: fileDataURI,
+        type: 'image',
+        inversion: true,
+        loading: true,
+        error: false,
+        conversationOptions: null,
+        requestOptions: { prompt: '[image]', options: null },
+      },
+    )
+
+    scrollToBottom()
+
+    const { data } = await fetchDetect<Chat.RecognizeGeneralResult>(fileInfo.file)
+    // message = parseDetections(data)
+    message = parseWordsInfo(data)
+    // message = data.content
+    updateChat(+uuid, dataSources.value.length - 1, {
+      dateTime: new Date().toLocaleString(),
+      text: message,
+      filePreview: fileDataURI,
+      type: 'image',
+      inversion: true,
+      loading: true,
+      error: false,
+      conversationOptions: null,
+      requestOptions: { prompt: message, options: null },
+    })
+  }
+  catch (error) {
+    chatStore.deleteChatByUuid(+uuid, dataSources.value.length - 1)
+    loading.value = false
+    throw error
+  }
+
+  onConversationResponse(message)
+}
+
 async function onConversation() {
-  let message = prompt.value
+  const message = prompt.value
 
   if (loading.value)
     return
@@ -86,9 +153,13 @@ async function onConversation() {
   loading.value = true
   prompt.value = ''
 
+  onConversationResponse(message)
+}
+
+async function onConversationResponse(message: string) {
   let options: Chat.ConversationRequest = {}
   const lastContext = conversationList.value[conversationList.value.length - 1]?.conversationOptions
-
+  debugger
   if (lastContext && usingContext.value)
     options = { ...lastContext }
 
@@ -447,6 +518,10 @@ const buttonDisabled = computed(() => {
   return loading.value || !prompt.value || prompt.value.trim() === ''
 })
 
+const uploadDisabled = computed(() => {
+  return loading.value
+})
+
 const footerClass = computed(() => {
   let classes = ['p-4']
   if (isMobile.value)
@@ -494,6 +569,8 @@ onUnmounted(() => {
                 :key="index"
                 :date-time="item.dateTime"
                 :text="item.text"
+                :type="item.type"
+                :file-preview="item.filePreview"
                 :inversion="item.inversion"
                 :error="item.error"
                 :loading="item.loading"
@@ -546,6 +623,17 @@ onUnmounted(() => {
               />
             </template>
           </NAutoComplete>
+          <NUpload ref="uploadRef" abstract :default-upload="false" accept="image/*" @change="handleUpload">
+            <NUploadTrigger #="{ handleClick }" abstract>
+              <NButton type="primary" :disabled="uploadDisabled" @click="handleClick">
+                <template #icon>
+                  <span class="dark:text-black">
+                    <SvgIcon icon="ri:chat-upload-fill" />
+                  </span>
+                </template>
+              </NButton>
+            </NUploadTrigger>
+          </NUpload>
           <NButton type="primary" :disabled="buttonDisabled" @click="handleSubmit">
             <template #icon>
               <span class="dark:text-black">
