@@ -6,7 +6,7 @@ interface Props {
   error?: boolean
   text?: string
   loading?: boolean
-  filePreview: string
+  filePreview?: string
 }
 
 defineProps<Props>()
